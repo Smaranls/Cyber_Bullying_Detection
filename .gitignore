@@ -1,0 +1,38 @@
+# Environment files
+.env
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Database files
+*.db
+instance/
+../instance/
+
+# Uploaded files and reports
+static/uploads/*
+static/reports/*
+../static/uploads/*
+../static/reports/*
+
+# Virtual environments
+venv/
+test_env/
+../venv/
+
+# IDE and editor files
+.vscode/
+.idea/
+
+# Jupyter notebooks and ML models
+*.ipynb
+*.ipynb_checkpoints/
+*.pkl
+*.csv
+*.docx
+
+# Exclude parent/sibling project files
+../Capstone Project/
