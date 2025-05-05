@@ -1,0 +1,358 @@
+<!-- templates/dashboard.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Cyberbullying Detection</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-image: url("{{ url_for('static', filename='cyberimage.jpg') }}");
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 800px;
+            margin-top: 50px;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+        .static-title {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #28a745;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .text-form-control {
+            height: 200px;
+            border: 2px solid #28a745;
+            font-size: 1.2rem;
+        }
+        .result {
+            text-align: center;
+            font-size: 24px;
+            margin-top: 20px;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .bullying { background-color: #dc3545; }
+        .non-bullying { background-color: #28a745; }
+        .navbar { background-color: rgba(0, 0, 0, 0.8) !important; }
+        .detection-details {
+            margin-top: 10px;
+            text-align: center;
+            font-style: italic;
+            color: #6c757d;
+        }
+        .welcome-message {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            color: #28a745;
+        }
+        .nav-tabs {
+            margin-bottom: 20px;
+            border-bottom: 2px solid #28a745;
+        }
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            font-weight: bold;
+        }
+        .nav-tabs .nav-link.active {
+            color: #28a745;
+            background: transparent;
+            border-bottom: 3px solid #28a745;
+        }
+        .file-upload {
+            border: 2px dashed #28a745;
+            border-radius: 5px;
+            padding: 30px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+        .file-upload:hover { background-color: rgba(40, 167, 69, 0.1); }
+        .upload-icon { font-size: 48px; color: #28a745; margin-bottom: 10px; }
+        .upload-text { color: #6c757d; }
+        .uploaded-image {
+            max-width: 100%;
+            max-height: 300px;
+            margin: 15px auto;
+            display: block;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        #imagePreview { display: none; margin-top: 20px; }
+        .extracted-text-card {
+            margin-top: 15px;
+            border-left: 4px solid #28a745;
+            background-color: #f8f9fa;
+        }
+        .extracted-text-header {
+            font-weight: bold;
+            color: #28a745;
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 8px;
+        }
+        .extracted-text-content {
+            white-space: pre-line;
+            font-family: monospace;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .location-section {
+            margin-top: 20px;
+            padding: 20px;
+            border: 2px solid #28a745;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            text-align: center;
+        }
+        .location-options { margin-top: 15px; }
+        .location-details {
+            margin-top: 15px;
+            font-size: 1.1rem;
+            color: #6c757d;
+        }
+        .slider-container {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        .slider { width: 60px; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <a class="navbar-brand" href="#">Cyberbullying Detection</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <span class="nav-link">Welcome, {{ session['username'] }}!</span>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+    <div class="container">
+        <div class="static-title">Cyberbullying Threat Analysis</div>
+        <div class="welcome-message" id="welcomeMessage">
+            Welcome {{ session['username'] }} to the Cyberbullying Threat Analysis website
+        </div>
+        
+        <ul class="nav nav-tabs" id="detectionTabs">
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab != 'image' and active_tab != 'location' %}active{% endif %}" id="text-tab" data-toggle="tab" href="#textDetection">TEXT Detection</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'image' %}active{% endif %}" id="image-tab" data-toggle="tab" href="#imageDetection">IMAGE Detection</a>
+            </li>
+            {% if user_age > 16 %}
+            <li class="nav-item">
+                <a class="nav-link {% if active_tab == 'location' %}active{% endif %}" id="location-tab" data-toggle="tab" href="#locationDetection">LOCATION</a>
+            </li>
+            {% endif %}
+        </ul>
+        
+        <div class="tab-content">
+            <div class="tab-pane fade {% if active_tab != 'image' and active_tab != 'location' %}show active{% endif %}" id="textDetection">
+                <form method="POST" action="{{ url_for('analyze_text') }}">
+                    <div class="form-group">
+                        <textarea name="text" class="form-control text-form-control" rows="4" placeholder="Enter text to analyze..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-success btn-block">Analyze Text</button>
+                </form>
+                {% if text_prediction is not none %}
+                    <div class="result {% if text_prediction == 1 %}bullying{% else %}non-bullying{% endif %}">
+                        {% if text_prediction == 1 %}
+                            Bullying Content Detected
+                        {% else %}
+                            Non-Bullying Content
+                        {% endif %}
+                    </div>
+                    {% if text_reason %}
+                    <div class="detection-details">
+                        Detection details: {{ text_reason }}
+                    </div>
+                    {% endif %}
+                {% endif %}
+            </div>
+            
+            <div class="tab-pane fade {% if active_tab == 'image' %}show active{% endif %}" id="imageDetection">
+                <form method="POST" action="{{ url_for('analyze_image') }}" enctype="multipart/form-data">
+                    <div class="file-upload" onclick="document.getElementById('imageUpload').click()">
+                        <div class="upload-icon">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <div class="upload-text">
+                            <p>Click to upload or drag and drop</p>
+                            <p class="small">Supported formats: JPG, PNG, GIF</p>
+                        </div>
+                        <input type="file" id="imageUpload" name="image" class="form-control-file" accept="image/*" style="display: none;" onchange="previewImage(this)">
+                    </div>
+                    <div id="imagePreview">
+                        <img id="preview" class="uploaded-image">
+                        <button type="submit" class="btn btn-success btn-block mt-3">Analyze Image</button>
+                    </div>
+                </form>
+                {% if image_prediction is not none %}
+                    <div class="mt-4">
+                        {% if uploaded_image_path %}
+                            <img src="{{ uploaded_image_path }}" class="uploaded-image">
+                        {% endif %}
+                        <div class="result {% if image_prediction == 1 %}bullying{% else %}non-bullying{% endif %}">
+                            {% if image_prediction == 1 %}
+                                Bullying Content Detected
+                            {% else %}
+                                Non-Bullying Content
+                            {% endif %}
+                        </div>
+                        {% if image_sentiment %}
+                        <div class="detection-details">
+                            Sentiment value: {{ image_sentiment }}
+                        </div>
+                        {% endif %}
+                        {% if detection_reason %}
+                        <div class="detection-details">
+                            {{ detection_reason }}
+                        </div>
+                        {% endif %}
+                        {% if extracted_text and extracted_text.strip() %}
+                        <div class="card extracted-text-card mt-3">
+                            <div class="card-header extracted-text-header">
+                                <i class="fas fa-file-alt mr-2"></i> Text Extracted from Image
+                            </div>
+                            <div class="card-body">
+                                <div class="extracted-text-content">{{ extracted_text }}</div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            {% if user_age > 16 %}
+            <div class="tab-pane fade {% if active_tab == 'location' %}show active{% endif %}" id="locationDetection">
+                <div class="location-section">
+                    <p>Hey {{ session['username'] }}, Do you want to report something you find uncomfortable about it or something you want to take the help from the Cybercrime Branch office?</p>
+                    <div class="location-options">
+                        <button class="btn btn-success" onclick="showLocationDetails('yes')">Yes</button>
+                        <button class="btn btn-secondary" onclick="showLocationDetails('no')">No</button>
+                    </div>
+                    <div id="locationDetails" class="location-details" style="display: none;"></div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <script>
+        function previewImage(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('preview').src = e.target.result;
+                    document.getElementById('imagePreview').style.display = 'block';
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!localStorage.getItem('welcomeMessagePlayed')) {
+                const username = "{{ session['username'] }}";
+                const welcomeText = `Welcome ${username} to the cyberbullying Threat Analysis website. Please enter the sentence or word you want to analyze.`;
+                if ('speechSynthesis' in window) {
+                    const utterance = new SpeechSynthesisUtterance(welcomeText);
+                    utterance.rate = 1.0;
+                    utterance.pitch = 1.0;
+                    utterance.volume = 1.0;
+                    window.speechSynthesis.onvoiceschanged = function() {
+                        const voices = window.speechSynthesis.getVoices();
+                        const englishVoices = voices.filter(voice => voice.lang.includes('en-'));
+                        if (englishVoices.length > 0) {
+                            utterance.voice = englishVoices[0];
+                        }
+                    };
+                    window.speechSynthesis.speak(utterance);
+                    localStorage.setItem('welcomeMessagePlayed', 'true');
+                }
+                document.getElementById('welcomeMessage').textContent = welcomeText;
+            }
+            {% if active_tab %}
+                {% if active_tab == 'image' %}
+                    $('#image-tab').tab('show');
+                {% elif active_tab == 'location' %}
+                    $('#location-tab').tab('show');
+                {% else %}
+                    $('#text-tab').tab('show');
+                {% endif %}
+            {% endif %}
+        });
+
+        function showLocationDetails(choice) {
+            const locationDetails = document.getElementById('locationDetails');
+            locationDetails.style.display = 'block';
+            if (choice === 'no') {
+                fetch('/get_nearby_stations')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            locationDetails.innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
+                        } else if (data.stations && data.stations.length > 0) {
+                            let html = '<h5>Nearby Police Stations:</h5><ul>';
+                            data.stations.forEach(station => {
+                                html += `<li><strong>${station.name}</strong><br>Phone: ${station.phone}<br>Location: Lat ${station.lat}, Lon ${station.lon}</li>`;
+                            });
+                            html += '</ul>';
+                            locationDetails.innerHTML = html;
+                        } else {
+                            locationDetails.innerHTML = '<p>No police stations found nearby.</p>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching stations:', error);
+                        locationDetails.innerHTML = '<p style="color: red;">Error fetching police stations. Please try again later.</p>';
+                    });
+            } else if (choice === 'yes') {
+                locationDetails.innerHTML = `
+                    <p>Please open the OpenStreetMap for live feedback</p>
+                    <div class="slider-container">
+                        <span>NO</span>
+                        <input type="range" min="0" max="1" value="0" class="slider" id="mapSlider" onchange="toggleMap()">
+                        <span>YES</span>
+                    </div>
+                `;
+            }
+        }
+
+        function toggleMap() {
+            const slider = document.getElementById('mapSlider');
+            if (slider.value == 1) {
+                window.open('/open_map', '_blank');
+            }
+        }
+    </script>
+</body>
+</html>

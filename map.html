@@ -1,0 +1,119 @@
+<!-- templates/map.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Map - Cyberbullying Detection</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        body { margin: 0; padding: 0; height: 100vh; overflow: hidden; }
+        #map { height: 100%; width: 100%; }
+        .dialog-box {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.5); z-index: 1000;
+        }
+        .dialog-box input { margin: 10px 0; width: 100%; padding: 5px; }
+        .dialog-box button { width: 100%; padding: 10px; background-color: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        .error-message { color: red; text-align: center; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    {% if error %}
+        <div class="error-message">{{ error }}</div>
+    {% endif %}
+    {% if not lat %}
+    <div class="dialog-box" id="locationDialog">
+        <h3>Enter Your Location</h3>
+        <form method="POST" action="{{ url_for('open_map') }}">
+            <input type="text" name="country" placeholder="Enter Country" required>
+            <input type="text" name="city" placeholder="Enter City" required>
+            <button type="submit">OK</button>
+        </form>
+    </div>
+    {% endif %}
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        {% if lat and lon and stations %}
+        let map, userMarker, routeLayer;
+        const userLat = {{ lat|tojson }};
+        const userLon = {{ lon|tojson }};
+        const policeStations = {{ stations|tojson }};
+
+        function initMap(lat, lon) {
+            try {
+                map = L.map('map').setView([lat, lon], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+
+                userMarker = L.marker([lat, lon], {
+                    icon: L.icon({
+                        iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+                        iconSize: [25, 41], iconAnchor: [12, 41]
+                    })
+                }).addTo(map).bindPopup("Your Location");
+
+                if (policeStations && policeStations.length > 0) {
+                    policeStations.forEach(station => {
+                        const marker = L.marker([station.lat, station.lon], {
+                            icon: L.icon({
+                                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                                iconSize: [25, 41], iconAnchor: [12, 41]
+                            })
+                        }).addTo(map);
+                        marker.bindPopup(`
+                            <b>${station.name}</b><br>
+                            Phone: ${station.phone}<br>
+                            Location: ${station.lat}, ${station.lon}
+                        `);
+                        marker.on('click', () => showRoute([lat, lon], [station.lat, station.lon], station));
+                    });
+                } else {
+                    console.log("No police stations to display.");
+                    document.body.innerHTML += '<div class="error-message">No police stations found nearby.</div>';
+                }
+            } catch (error) {
+                console.error("Error initializing map:", error);
+                document.body.innerHTML += '<div class="error-message">Failed to load map. Please try again later.</div>';
+            }
+        }
+
+        function showRoute(start, end, station) {
+            try {
+                if (routeLayer) map.removeLayer(routeLayer);
+                const latlngs = [start, end];
+                routeLayer = L.polyline(latlngs, {color: 'green'}).addTo(map);
+
+                const R = 6371; // Earth's radius in km
+                const dLat = (end[0] - start[0]) * Math.PI / 180;
+                const dLon = (end[1] - start[1]) * Math.PI / 180;
+                const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                          Math.cos(start[0] * Math.PI / 180) * Math.cos(end[0] * Math.PI / 180) *
+                          Math.sin(dLon/2) * Math.sin(dLon/2);
+                const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+                const distance = R * c;
+                const time = distance / 40 * 60; // Estimated time in minutes (40 km/h)
+
+                userMarker.setPopupContent(`
+                    <b>Your Location</b><br>
+                    To: ${station.name}<br>
+                    Distance: ${distance.toFixed(2)} km<br>
+                    Estimated Time: ${time.toFixed(0)} minutes<br>
+                    Location: ${end[0]}, ${end[1]}
+                `).openPopup();
+            } catch (error) {
+                console.error("Error showing route:", error);
+                document.body.innerHTML += '<div class="error-message">Failed to show route. Please try again.</div>';
+            }
+        }
+
+        initMap(userLat, userLon);
+        {% else %}
+        console.log("Map data not available. Waiting for user input.");
+        {% endif %}
+    </script>
+</body>
+</html>
